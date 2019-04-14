@@ -114,18 +114,11 @@ void loop() {
   if (now - lastMsg > timeBetweenMessages ) {
     lastMsg = now;
     ++value;
-    String payload = "{\"micros\":";
-    payload += micros();
-    payload += ",\"counter\":";
+    String payload;;
     payload += value;
-    payload += ",\"client\":";
-//    payload += clientId;
-    payload += "}";
+
     String pubTopic;
      pubTopic += topic ;
- //    pubTopic += "/";
-//     pubTopic += clientId;
-     pubTopic += "/out";
     Serial.print("Publish topic: ");
     Serial.println(pubTopic);
     Serial.print("Publish message: ");
