@@ -3,14 +3,29 @@
 #include <PubSubClient.h>
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
+//setup for time tracking and timestamps
+#include <NTPClient.h>
+#define NTP_OFFSET   0      // In seconds
+#define NTP_INTERVAL 60 * 10000    // In miliseconds
+#define NTP_ADDRESS  "pool.ntp.org"
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
+
+
+
+
 // Update these with values suitable for your network.
 const char* mqtt_server = "ha.lan";
 const char* topic = "Tracker";    // this is the [root topic]
 const char* starttopic = "Online"; 
 long timeBetweenMessages = 5000;
 
+
+//define variables 
 int rotations =0;
-int wheelspeed = 0;
+int maxspeed = 0;
+int minspeed = 0;
+int avgspeed = 0;
 //diameter of inside of wheel
 int wheeldiamter = 293;
 int distance = 0;
@@ -67,6 +82,7 @@ void setup() {
   client.setServer(mqtt_server, 1883);
     //setup reed switch need to pull down 
     pinMode(ReedPin, INPUT_PULLUP);
+    timeClient.begin();
 }
 
 void loop() {
@@ -74,6 +90,7 @@ void loop() {
   if (!client.connected()) {
     reconnect();
   }
+  timeClient.update();
   if ( startup == 0)
   {// this is to make sure it connects by publishing a topic else the reconnect will sit 
     startup ++;
@@ -105,17 +122,27 @@ void loop() {
         }
         LastReedState = ReedState;
       //if there has been movement and it is after 10 seconds of no activity then publish results 
+     if (rotations != 0)
+     {
         if (now - lastMsg > timeBetweenMessages ) {
           distance = rotations * (wheeldiamter*3.14);
-          
+          String formattedTime = timeClient.getFormattedTime();
           lastMsg = now;
           ++value;
           String payload = "{\"rotations\":";
           payload += rotations;
-          payload += ",\"speed\":";
-          payload += wheelspeed;
+          payload += ",\"Average speed\":";
+          payload += avgspeed;
+          payload += ",\"Max Speed\":";
+          payload += maxspeed;
+          payload += ",\"Min Speed\":";
+          payload += minspeed;            
           payload += ",\"distance\":";
           payload += distance;
+          payload += ",\"timestamp\":";
+          payload += '"';          
+          payload += formattedTime;   
+          payload += '"';                          
           payload += "}";
           String pubTopic;
            pubTopic += topic ;
@@ -126,7 +153,9 @@ void loop() {
           client.publish( (char*) pubTopic.c_str() , (char*) payload.c_str(), true );
           distance = 0;
           rotations = 0;
-          wheelspeed = 0;   
+          avgspeed = 0;  
+          minspeed =0;
+          maxspeed =0; 
       }
-
+     }
 }
