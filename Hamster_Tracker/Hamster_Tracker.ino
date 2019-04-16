@@ -145,7 +145,7 @@ void loop() {
           payload += '"';                          
           payload += "}";
           String pubTopic;
-           pubTopic += topic ;
+           pubTopic += topic  ;
           Serial.print("Publish topic: ");
           Serial.println(pubTopic);
           Serial.print("Publish message: ");
