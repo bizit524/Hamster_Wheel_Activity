@@ -1,8 +1,13 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <WiFiUdp.h>
+//#include <WiFiUdp.h>
 #include <WiFiManager.h>
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+ 
+
+
 //setup for time tracking and timestamps
 #include <NTPClient.h>
 #define NTP_OFFSET   0      // In seconds
@@ -11,15 +16,11 @@
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 
-
-
-
 // Update these with values suitable for your network.
 const char* mqtt_server = "ha.lan";
-const char* topic = "Tracker";    // this is the [root topic]
+const char* topic = "Tracker1";    // this is the [root topic]
 const char* starttopic = "Online"; 
 long timeBetweenMessages = 5000;
-
 
 //define variables 
 int rotations =0;
@@ -34,6 +35,10 @@ unsigned long time_now=0;
 int startup = 0;
 
 
+int sprintstart = 0;
+unsigned long sprintstartTime;
+unsigned long sprintendTime;
+unsigned long sprintduration;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -50,35 +55,14 @@ String composeClientID() {
   return clientId;
 }
 
-void reconnect() {
-  // Loop until we're reconnected
-  while (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-
-    String clientId = "Trackers" ;
-
-
-    // Attempt to connect
-    if (client.connect(clientId.c_str())) {
-       } else {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.print(" wifi=");
-      Serial.print(WiFi.status());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
-  }
-}
 
 void setup() {
-
-
+  WiFiManager wifiManager;
+  wifiManager.autoConnect("Tracker");
   Serial.begin(115200);
+  Serial.println("Serial Started");
   // We start by connecting to a WiFi network
-  WiFiManager MyWifiManager;
-  MyWifiManager.autoConnect("Trackers");
+
   client.setServer(mqtt_server, 1883);
     //setup reed switch need to pull down 
     pinMode(ReedPin, INPUT_PULLUP);
@@ -110,13 +94,22 @@ void loop() {
 
        if (ReedState != LastReedState )
        {
+       
           if (ReedState == LOW)
           { Serial.println("Wheel Cycle");
             rotations ++;
+          sprintendTime = millis();
+          if (sprintstart == 0)
+          {
+          //start sprinttimer
+          sprintstartTime = millis();  
+          sprintstart = 1;
+          Serial.println("Sprint Started");
+          }        
             //reset counter
             lastMsg = now;
+          sprintendTime = millis();  
            }
-           else {}
          delay(50);
         
         }
@@ -124,11 +117,16 @@ void loop() {
       //if there has been movement and it is after 10 seconds of no activity then publish results 
      if (rotations != 0)
      {
+        sprintduration = sprintendTime - sprintstartTime;
+        Serial.println("Sprint Duration");
+        Serial.println(sprintduration);
         if (now - lastMsg > timeBetweenMessages ) {
           distance = rotations * (wheeldiamter*3.14);
           String formattedTime = timeClient.getFormattedTime();
           lastMsg = now;
           ++value;
+          //restart sprint start
+          sprintstart = 0;
           String payload = "{\"rotations\":";
           payload += rotations;
           payload += ",\"Average speed\":";
@@ -142,7 +140,9 @@ void loop() {
           payload += ",\"timestamp\":";
           payload += '"';          
           payload += formattedTime;   
-          payload += '"';                          
+          payload += '"'; 
+          payload += ",\"sprinttime\":";
+          payload += sprintduration;                                   
           payload += "}";
           String pubTopic;
            pubTopic += topic  ;
@@ -158,4 +158,28 @@ void loop() {
           maxspeed =0; 
       }
      }
+}
+
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.println("Attempting MQTT connection...");
+
+    String clientId = "Trackers" ;
+
+
+    // Attempt to connect
+    if (client.connect(clientId.c_str()))
+      {Serial.println("MQTT Connect"); 
+       } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.print(" wifi=");
+      Serial.print(WiFi.status());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
 }
