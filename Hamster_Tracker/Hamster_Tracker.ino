@@ -17,7 +17,7 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 
 // Update these with values suitable for your network.
-const char* mqtt_server = "ha.lan";
+const char* mqtt_server = "192.168.20.240";
 const char* topic = "Tracker1";    // this is the [root topic]
 const char* starttopic = "Online"; 
 long timeBetweenMessages = 5000;
@@ -71,9 +71,11 @@ void setup() {
 
 void loop() {
   // confirm still connected to mqtt server
+
   if (!client.connected()) {
     reconnect();
   }
+    client.loop();
   timeClient.update();
   if ( startup == 0)
   {// this is to make sure it connects by publishing a topic else the reconnect will sit 
@@ -170,8 +172,10 @@ void reconnect() {
 
 
     // Attempt to connect
-    if (client.connect(clientId.c_str()))
-      {Serial.println("MQTT Connect"); 
+    if (client.connect(clientId.c_str())){
+      Serial.println("MQTT Connect"); 
+      Serial.print(WiFi.status());
+      Serial.print(client.state());
        } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
