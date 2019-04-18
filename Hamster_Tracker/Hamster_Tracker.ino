@@ -3,6 +3,7 @@
 #include <PubSubClient.h>
 //#include <WiFiUdp.h>
 #include <WiFiManager.h>
+<<<<<<< HEAD
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
  
@@ -16,17 +17,20 @@
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 
+=======
+>>>>>>> parent of 0a59afa... added timestamps
 // Update these with values suitable for your network.
 const char* mqtt_server = "ha.lan";
 const char* topic = "Tracker1";    // this is the [root topic]
 const char* starttopic = "Online"; 
 long timeBetweenMessages = 5000;
 
+<<<<<<< HEAD
 //define variables 
+=======
+>>>>>>> parent of 0a59afa... added timestamps
 int rotations =0;
-int maxspeed = 0;
-int minspeed = 0;
-int avgspeed = 0;
+int wheelspeed = 0;
 //diameter of inside of wheel
 int wheeldiamter = 293;
 int distance = 0;
@@ -66,7 +70,6 @@ void setup() {
   client.setServer(mqtt_server, 1883);
     //setup reed switch need to pull down 
     pinMode(ReedPin, INPUT_PULLUP);
-    timeClient.begin();
 }
 
 void loop() {
@@ -74,7 +77,6 @@ void loop() {
   if (!client.connected()) {
     reconnect();
   }
-  timeClient.update();
   if ( startup == 0)
   {// this is to make sure it connects by publishing a topic else the reconnect will sit 
     startup ++;
@@ -115,34 +117,36 @@ void loop() {
         }
         LastReedState = ReedState;
       //if there has been movement and it is after 10 seconds of no activity then publish results 
+<<<<<<< HEAD
      if (rotations != 0)
      {
         sprintduration = sprintendTime - sprintstartTime;
         Serial.println("Sprint Duration");
         Serial.println(sprintduration);
+=======
+>>>>>>> parent of 0a59afa... added timestamps
         if (now - lastMsg > timeBetweenMessages ) {
           distance = rotations * (wheeldiamter*3.14);
-          String formattedTime = timeClient.getFormattedTime();
+          
           lastMsg = now;
           ++value;
           //restart sprint start
           sprintstart = 0;
           String payload = "{\"rotations\":";
           payload += rotations;
-          payload += ",\"Average speed\":";
-          payload += avgspeed;
-          payload += ",\"Max Speed\":";
-          payload += maxspeed;
-          payload += ",\"Min Speed\":";
-          payload += minspeed;            
+          payload += ",\"speed\":";
+          payload += wheelspeed;
           payload += ",\"distance\":";
           payload += distance;
+<<<<<<< HEAD
           payload += ",\"timestamp\":";
           payload += '"';          
           payload += formattedTime;   
           payload += '"'; 
           payload += ",\"sprinttime\":";
           payload += sprintduration;                                   
+=======
+>>>>>>> parent of 0a59afa... added timestamps
           payload += "}";
           String pubTopic;
            pubTopic += topic  ;
@@ -153,11 +157,9 @@ void loop() {
           client.publish( (char*) pubTopic.c_str() , (char*) payload.c_str(), true );
           distance = 0;
           rotations = 0;
-          avgspeed = 0;  
-          minspeed =0;
-          maxspeed =0; 
+          wheelspeed = 0;   
       }
-     }
+
 }
 
 
