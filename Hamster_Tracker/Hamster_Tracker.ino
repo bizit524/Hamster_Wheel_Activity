@@ -15,26 +15,37 @@ NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 // Update these with values suitable for your network.
 
 const char* mqtt_server = "ha.lan";
-const char* topic = "Tracker";    // this is the [root topic]
+const char* topic = "Tracker";     // this is the [root topic]
 const char* starttopic = "Online"; 
-long timeBetweenMessages = 5000;
+short timeBetweenMessages = 5000;
 
+int rotationstart = 0;
+int rotationendtime;
+int rotationstarttime;
+int rotationtime;
 int rotations =0;
+
+
 int wheelspeed = 0;
 //diameter of inside of wheel
 int wheeldiamter = 293;
 int distance = 0;
 int period = 10000;
 unsigned long time_now=0;
-int startup = 0;
+byte startup = 0;
 int maxspeed = 0;
 int minspeed = 0;
 int avgspeed = 0;
-
-int sprintstart = 0;
-unsigned long sprintstartTime;
-unsigned long sprintendTime;
-unsigned long sprintduration;
+byte speedstart;
+int speedbegin;
+int speedend;
+int speedduration;
+//calculate how long sprint goes for 
+byte sprintstart = 0;
+short speedincrement;
+long sprintstartTime = 0;
+long sprintendTime  = 0;
+long sprintduration = 0;
 //define reed switch
 int ReedState = 0;
 int LastReedState = 0;
@@ -49,6 +60,7 @@ int status = WL_IDLE_STATUS;     // the starting Wifi radio's status
 void reconnect() 
 {
   // Loop until we're reconnected
+  Serial.println("Reconnect Mode");
   while (!client.connected()) 
    {
     Serial.print("Attempting MQTT connection...");
@@ -104,40 +116,66 @@ void loop()
       if (ReedState == LOW)
       { Serial.println("Wheel Cycle");
         rotations ++;
-        
+        //calculate the time it takes to do one rotation
+        if(startup == 1)
+        {
+          speedbegin = millis();
+          
+        }
+        if(startup == 0)
+        {
+          speedend = millis();
+          startup = 1;
+        }
+        //calculate how long he runs for
+        if(sprintstart == 0)
+        {
+          sprintstart = 1;
+          sprintstartTime = millis();
+          Serial.println("Sprint Start");
+        }
         //reset counter
-        lastMsg = now;
+       lastMsg = now;
        }
-       else {}
-     delay(50);
-    sprintendTime = millis();
+     //delay(50);
+       sprintendTime = millis();
+       
+      if(ReedState == HIGH)
+      {
+        speedduration = speedbegin - speedend;
+        Serial.println(speedduration);
+        startup = 0;
+      }
     }
     LastReedState = ReedState;
     //if there has been movement and it is after 10 seconds of no activity then publish results 
-    if (rotations != 0)
+    //this calc is not working for some reason causing mqtt not to publish but calculation is right 
+     sprintduration=  sprintendTime - sprintstartTime;
+    if (rotations > 0)
     {
       
         if (now - lastMsg > timeBetweenMessages ) 
         {
+         
           distance = rotations * (wheeldiamter*3.14);
           lastMsg = now;
           ++value;
-          String payload = "{\"rotations\":";
+          String payload = "{\"r\":";
           payload += rotations;
-          payload += ",\"Average speed\":";
+          payload += ",\"as\":";
           payload += avgspeed;
-          payload += ",\"Max Speed\":";
+          payload += ",\"mas\":";
           payload += maxspeed;
-          payload += ",\"Min Speed\":";
+          payload += ",\"mis\":";
           payload += minspeed;    
-          payload += ",\"distance\":";
-          payload += distance;          
-          payload += ",\"timestamp\":";
+          payload += ",\"d\":";
+          payload += distance;   
+          payload += ",\"ts\":";
           payload += '"';          
           payload += formattedTime;   
-          payload += '"';  
-          payload += ",\"sprinttime\":";
-          payload += sprintduration;               
+          payload += '"';
+          payload += ",\"st\":";
+          payload += sprintduration;                                      
           payload += "}";
           String pubTopic;
            pubTopic += topic ;
@@ -149,6 +187,7 @@ void loop()
           distance = 0;
           rotations = 0;
           wheelspeed = 0;   
+         sprintstart = 0;
         }
      }
 }
