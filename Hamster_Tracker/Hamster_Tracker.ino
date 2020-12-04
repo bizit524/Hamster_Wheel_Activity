@@ -4,7 +4,7 @@
 #include <WiFiUdp.h>
 #include <WiFiManager.h>
 #include <NTPClient.h>
-
+#include <Bounce.h>
 //setup for time tracking and timestamps
 #define NTP_OFFSET   0      // In seconds
 #define NTP_INTERVAL 60 * 10000    // In miliseconds
@@ -114,7 +114,9 @@ void loop()
    if (ReedState != LastReedState )
    {
       if (ReedState == LOW)
-      { Serial.println("Wheel Cycle");
+        { Serial.println("Wheel Cycle");
+         Serial.println("rotations plus plus");
+         
         rotations ++;
         //calculate the time it takes to do one rotation
         if(startup == 1)
@@ -136,16 +138,17 @@ void loop()
         }
         //reset counter
        lastMsg = now;
-       }
-     //delay(50);
-       sprintendTime = millis();
        
+    // delay(50);
+       sprintendTime = millis();
+       }
       if(ReedState == HIGH)
-      {
+        {
+
         speedduration = speedbegin - speedend;
         Serial.println(speedduration);
         startup = 0;
-      }
+        }
     }
     LastReedState = ReedState;
     //if there has been movement and it is after 10 seconds of no activity then publish results 
@@ -153,15 +156,16 @@ void loop()
      sprintduration=  sprintendTime - sprintstartTime;
     if (rotations > 0)
     {
-      
+      //compensate for double trigger of rotations
+        int  calcrotations = rotations/2;
         if (now - lastMsg > timeBetweenMessages ) 
         {
          
-          distance = rotations * (wheeldiamter*3.14);
+          distance = calcrotations * (wheeldiamter*3.14);
           lastMsg = now;
           ++value;
           String payload = "{\"r\":";
-          payload += rotations;
+          payload += calcrotations;
           payload += ",\"as\":";
           payload += avgspeed;
           payload += ",\"mas\":";
